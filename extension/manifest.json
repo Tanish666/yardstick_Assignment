@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Yardstick — Trello AI Agent",
+  "version": "1.0.0",
+  "description": "Injects an AI chatbot into Trello that completes tasks from natural language, powered by Google Gemini (@google/genai).",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Trello AI Agent settings"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://trello.com/*",
+    "http://localhost:3000/*",
+    "https://*.vercel.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://trello.com/*"],
+      "js": ["config.js", "tools-executor.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

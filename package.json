@@ -1,0 +1,17 @@
+{
+  "name": "yardstick-trello-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gemini-powered agent backend for the Trello AI chatbot Chrome extension",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@google/genai": "^1.10.0",
+    "next": "^15.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
