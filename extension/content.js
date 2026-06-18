@@ -35,79 +35,423 @@
     <style>
       :host { all: initial; }
       * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      
       .launcher {
         position: fixed; right: 20px; bottom: 20px; z-index: 2147483646;
         width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
-        background: #0c66e4; color: #fff; font-size: 24px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
-        display: flex; align-items: center; justify-content: center; transition: transform .15s;
+        background: #1a1a1a; color: #fff; box-shadow: 0 6px 20px rgba(0,0,0,.2);
+        display: flex; align-items: center; justify-content: center; transition: transform .15s, background-color 0.2s;
       }
-      .launcher:hover { transform: scale(1.06); }
+      .launcher:hover { transform: scale(1.06); background-color: #333; }
+      .launcher svg { width: 24px; height: 24px; stroke: #fff; }
+
       .panel {
         position: fixed; right: 20px; bottom: 88px; z-index: 2147483647;
-        width: 380px; height: 560px; max-height: calc(100vh - 120px);
-        background: #fff; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
-        display: none; flex-direction: column; overflow: hidden; border: 1px solid #e4e6ea;
+        width: 380px; height: 580px; max-height: calc(100vh - 120px);
+        background: #f3f2ee; border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,.15);
+        display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(0,0,0,0.06);
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+        transform-origin: bottom right;
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.28s;
       }
-      .panel.open { display: flex; }
+      .panel.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+        visibility: visible;
+      }
+
       .header {
-        background: #0c66e4; color: #fff; padding: 14px 16px; font-weight: 600; font-size: 15px;
-        display: flex; align-items: center; justify-content: space-between;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px 8px;
+        background: transparent;
+        z-index: 10;
       }
-      .header .sub { font-weight: 400; font-size: 12px; opacity: .85; }
-      .header button { background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; }
-      .msgs { flex: 1; overflow-y: auto; padding: 14px; background: #f7f8f9; }
-      .msg { margin-bottom: 10px; display: flex; }
-      .msg .bubble {
-        padding: 9px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.45;
-        max-width: 85%; white-space: pre-wrap; word-wrap: break-word;
+      .header button {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 8px;
+        color: #4f4f4f;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
       }
-      .msg.user { justify-content: flex-end; }
-      .msg.user .bubble { background: #0c66e4; color: #fff; border-bottom-right-radius: 3px; }
-      .msg.assistant .bubble { background: #fff; color: #172b4d; border: 1px solid #e4e6ea; border-bottom-left-radius: 3px; }
-      .msg.error .bubble { background: #ffeceb; color: #ae2a19; border: 1px solid #ffd5d2; }
-      .tool { font-size: 11.5px; color: #5e6c84; margin: 4px 2px 8px; display: flex; align-items: center; gap: 6px; }
-      .tool code { background: #eef1f4; padding: 1px 5px; border-radius: 4px; color: #44546f; }
-      .suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; background: #f7f8f9; }
-      .suggest button {
-        font-size: 12px; background: #fff; border: 1px solid #d3d8de; color: #44546f;
-        padding: 6px 9px; border-radius: 14px; cursor: pointer;
+      .header button:hover {
+        background-color: rgba(0, 0, 0, 0.05);
       }
-      .suggest button:hover { background: #eef1f4; }
-      .composer { display: flex; padding: 10px; gap: 8px; border-top: 1px solid #e4e6ea; background: #fff; }
+      .header button svg {
+        width: 20px;
+        height: 20px;
+      }
+      .header .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #bbb 0%, #444 100%);
+        box-shadow: inset 0 1px 2px rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.15);
+      }
+
+      /* Toggle between welcome state and active chat state */
+      .panel.has-chat .welcome-container {
+        display: none;
+      }
+      .panel.has-chat .msgs {
+        display: flex;
+      }
+      
+      .panel:not(.has-chat) .welcome-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        flex: 1;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .panel:not(.has-chat) .msgs {
+        display: none;
+      }
+
+      .welcome-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 36px;
+        text-align: center;
+        letter-spacing: -0.5px;
+      }
+
+      .welcome-suggest {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        padding: 0 12px;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+      }
+      .welcome-suggest button {
+        background: #e5e4e0;
+        border: none;
+        border-radius: 20px;
+        padding: 16px 20px;
+        color: #1a1a1a;
+        font-size: 13.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        text-align: left;
+        width: 100%;
+        max-width: 340px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      }
+      .welcome-suggest button:hover {
+        background: #dad9d4;
+      }
+      .welcome-suggest button:active {
+        transform: scale(0.98);
+      }
+
+      .msgs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .msgs::-webkit-scrollbar {
+        width: 6px;
+      }
+      .msgs::-webkit-scrollbar-thumb {
+        background: rgba(0,0,0,0.1);
+        border-radius: 3px;
+      }
+
+      .msg {
+        display: flex;
+        width: 100%;
+      }
+      .msg.user {
+        justify-content: flex-end;
+      }
+      .msg.user .bubble {
+        background: #e9e8e4;
+        color: #1a1a1a;
+        border-radius: 20px;
+        padding: 12px 16px;
+        max-width: 80%;
+        font-size: 14.5px;
+        line-height: 1.45;
+        word-wrap: break-word;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      }
+      
+      .msg.assistant {
+        justify-content: flex-start;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .msg.assistant .bubble {
+        background: transparent;
+        color: #1a1a1a;
+        padding: 0;
+        max-width: 100%;
+        font-size: 14.5px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .msg.error {
+        justify-content: center;
+      }
+      .msg.error .bubble {
+        background: #ffeceb;
+        color: #ae2a19;
+        border: 1px solid #ffd5d2;
+        border-radius: 16px;
+        padding: 10px 14px;
+        font-size: 13.5px;
+        max-width: 90%;
+        text-align: center;
+      }
+
+      .tool {
+        font-size: 12px;
+        color: #707070;
+        margin: 4px 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(0, 0, 0, 0.03);
+        padding: 6px 12px;
+        border-radius: 12px;
+        width: fit-content;
+      }
+      .tool code {
+        background: #e2e1dc;
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #333;
+        font-family: monospace;
+        font-size: 11px;
+      }
+
+      .assistant-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+        color: #8c8c8c;
+      }
+      .assistant-actions button {
+        background: transparent;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: color 0.2s, background-color 0.2s;
+      }
+      .assistant-actions button:hover {
+        color: #1a1a1a;
+        background-color: rgba(0,0,0,0.05);
+      }
+      .assistant-actions button svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .footer-area {
+        padding: 8px 16px 16px;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-sizing: border-box;
+      }
+
+      .composer {
+        background: #ffffff;
+        border-radius: 26px;
+        padding: 12px 14px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-sizing: border-box;
+      }
       .composer textarea {
-        flex: 1; resize: none; border: 1px solid #d3d8de; border-radius: 8px; padding: 8px 10px;
-        font-size: 13.5px; height: 40px; max-height: 110px; outline: none; font-family: inherit;
+        width: 100%;
+        border: none;
+        outline: none;
+        resize: none;
+        background: transparent;
+        font-size: 14.5px;
+        line-height: 1.4;
+        color: #1a1a1a;
+        min-height: 24px;
+        max-height: 120px;
+        font-family: inherit;
+        padding: 4px 6px;
+        box-sizing: border-box;
       }
-      .composer textarea:focus { border-color: #0c66e4; }
-      .composer button {
-        background: #0c66e4; color: #fff; border: none; border-radius: 8px; padding: 0 14px;
-        cursor: pointer; font-size: 14px; font-weight: 600;
+      .composer textarea::placeholder {
+        color: #9c9c9c;
       }
-      .composer button:disabled { opacity: .5; cursor: default; }
-      .dots span { animation: blink 1.2s infinite both; }
-      .dots span:nth-child(2){ animation-delay:.2s } .dots span:nth-child(3){ animation-delay:.4s }
+      .composer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 4px;
+      }
+      .utility-btns {
+        display: flex;
+        gap: 4px;
+      }
+      .util-btn {
+        background: transparent;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #707070;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+      }
+      .util-btn:hover {
+        background-color: #f0f0f0;
+        color: #1a1a1a;
+      }
+      .util-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      #send {
+        background: #1a1a1a;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+      }
+      #send:hover {
+        background-color: #333333;
+      }
+      #send:disabled {
+        background-color: #e0e0e0;
+        cursor: default;
+      }
+      #send:disabled svg {
+        stroke: #a0a0a0;
+      }
+      #send:active:not(:disabled) {
+        transform: scale(0.95);
+      }
+      #send svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .disclaimer {
+        font-size: 11px;
+        color: #8c8c8c;
+        text-align: center;
+        width: 100%;
+        margin-top: 2px;
+      }
+
+      .dots {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        background: #e9e8e4;
+        padding: 8px 14px;
+        border-radius: 16px;
+      }
+      .dots span {
+        font-size: 10px;
+        color: #707070;
+        animation: blink 1.2s infinite both;
+      }
+      .dots span:nth-child(2){ animation-delay:.2s }
+      .dots span:nth-child(3){ animation-delay:.4s }
       @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
     </style>
 
-    <button class="launcher" id="launcher" title="Trello AI Agent">🤖</button>
+    <button class="launcher" id="launcher" title="Trello AI Agent">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </button>
 
     <div class="panel" id="panel">
       <div class="header">
-        <div>
-          Trello AI Agent
-          <div class="sub">Powered by Gemini · acts as you</div>
+        <button id="sidebar-toggle" title="Close Panel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18"/>
+          </svg>
+        </button>
+        <div class="avatar"></div>
+      </div>
+
+      <div class="welcome-container" id="welcome-container">
+        <div class="welcome-title">What can I help with?</div>
+        <div class="welcome-suggest suggest" id="suggest">
+          <button data-q="What boards do I have?">What boards do I have?</button>
+          <button data-q="Add a card called 'Draft Q3 roadmap' to my To Do list">Add a card to To Do</button>
+          <button data-q="Create a list called 'In Review' on my main board">Create a list</button>
         </div>
-        <button id="close" title="Close">✕</button>
       </div>
+
       <div class="msgs" id="msgs"></div>
-      <div class="suggest" id="suggest">
-        <button data-q="What boards do I have?">What boards do I have?</button>
-        <button data-q="Add a card called 'Draft Q3 roadmap' to my To Do list">Add a card to To Do</button>
-        <button data-q="Create a list called 'In Review' on my main board">Create a list</button>
-      </div>
-      <div class="composer">
-        <textarea id="input" placeholder="Ask me to do something on Trello..."></textarea>
-        <button id="send">➤</button>
+
+      <div class="footer-area">
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Ask anything"></textarea>
+          <div class="composer-actions">
+            <div class="utility-btns">
+              <button class="util-btn" title="Add attachment" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <button class="util-btn" title="Search web" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+              </button>
+              <button class="util-btn" title="Inspiration" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+              </button>
+              <button class="util-btn" title="More" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+            </div>
+            <button id="send" title="Send message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="disclaimer">AI can make mistakes. Please double-check responses.</div>
       </div>
     </div>
   `;
@@ -122,7 +466,7 @@
     panel.classList.toggle('open');
     if (panel.classList.contains('open')) input.focus();
   });
-  $('#close').addEventListener('click', () => panel.classList.remove('open'));
+  $('#sidebar-toggle').addEventListener('click', () => panel.classList.remove('open'));
 
   root.querySelectorAll('.suggest button').forEach((b) =>
     b.addEventListener('click', () => {
@@ -132,12 +476,42 @@
   );
 
   function addMsg(role, text) {
+    if (role === 'user') {
+      panel.classList.add('has-chat');
+    }
     const wrap = document.createElement('div');
     wrap.className = 'msg ' + role;
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = text;
     wrap.appendChild(bubble);
+
+    if (role === 'assistant' && text) {
+      const actions = document.createElement('div');
+      actions.className = 'assistant-actions';
+      actions.innerHTML = `
+        <button class="action-btn" title="Copy response">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="action-btn" title="Good response">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+        </button>
+        <button class="action-btn" title="Bad response">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg>
+        </button>
+        <button class="action-btn" title="Listen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <button class="action-btn" title="Regenerate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+      `;
+      actions.querySelector('[title="Copy response"]').addEventListener('click', () => {
+        navigator.clipboard.writeText(text);
+      });
+      wrap.appendChild(actions);
+    }
+
     msgs.appendChild(wrap);
     msgs.scrollTop = msgs.scrollHeight;
     return wrap;
@@ -170,11 +544,24 @@
     input.disabled = b;
   }
 
+  // Auto-grow textarea logic
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = input.scrollHeight + 'px';
+  });
+
   input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send();
     }
+  });
+  input.addEventListener('keyup', (e) => {
+    e.stopPropagation();
+  });
+  input.addEventListener('keypress', (e) => {
+    e.stopPropagation();
   });
   sendBtn.addEventListener('click', send);
 
@@ -242,6 +629,7 @@
     const text = input.value.trim();
     if (busy || !text) return;
     input.value = '';
+    input.style.height = 'auto'; // Reset autogrow height
     setBusy(true);
     addMsg('user', text);
 
